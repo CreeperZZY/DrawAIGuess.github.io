@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>无限词库 · AI猜词挑战</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 550px;
+            width: 100%;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(8px);
+            border-radius: 64px 64px 48px 48px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.2);
+            padding: 20px 20px 30px;
+            transition: all 0.2s;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 0 12px 10px;
+        }
+
+        .score-box {
+            background: #00000066;
+            backdrop-filter: blur(4px);
+            padding: 8px 18px;
+            border-radius: 60px;
+            color: #FFE6B0;
+            font-weight: bold;
+            font-size: 1.3rem;
+            letter-spacing: 1px;
+        }
+
+        .score-box span {
+            color: #FFD966;
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-right: 5px;
+        }
+
+        .word-panel {
+            background: #2E4A62;
+            border-radius: 80px;
+            margin: 15px 12px;
+            padding: 12px 20px;
+            text-align: center;
+            box-shadow: inset 0 2px 5px #1f3446, 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .current-word {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: #FFECB3;
+            text-shadow: 0 2px 0 #7f4f24;
+            letter-spacing: 4px;
+            word-break: break-word;
+        }
+
+        .difficulty-badge {
+            font-size: 0.8rem;
+            background: #00000055;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 40px;
+            color: #ddd;
+        }
+
+        .canvas-area {
+            background: #fef7e0;
+            border-radius: 36px;
+            padding: 12px;
+            margin: 10px 0;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            background: white;
+            border-radius: 28px;
+            cursor: crosshair;
+            box-shadow: inset 0 0 0 2px #ffe2a4, 0 4px 12px rgba(0,0,0,0.1);
+            touch-action: none;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin: 18px 0 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #2c3e2f;
+            border: none;
+            font-weight: bold;
+            padding: 10px 22px;
+            border-radius: 60px;
+            font-size: 1rem;
+            color: white;
+            backdrop-filter: blur(4px);
+            transition: 0.1s linear;
+            box-shadow: 0 4px 0 #1b2a1d;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #1b2a1d;
+        }
+
+        .btn-guess {
+            background: #d45a2b;
+            box-shadow: 0 4px 0 #813c1a;
+        }
+
+        .btn-clear {
+            background: #3a5c6e;
+            box-shadow: 0 4px 0 #1f3f4a;
+        }
+
+        .message-area {
+            background: #1f2e38cc;
+            backdrop-filter: blur(8px);
+            border-radius: 60px;
+            margin: 12px 8px;
+            padding: 12px;
+            text-align: center;
+            font-weight: 500;
+            color: #FFECAA;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .ad-simulation {
+            background: #00000044;
+            border-radius: 48px;
+            margin-top: 16px;
+            padding: 8px;
+            font-size: 0.75rem;
+            text-align: center;
+            color: #b9d2f0;
+        }
+
+        .footer {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 20px;
+            color: #afcdff99;
+        }
+
+        @media (max-width: 500px) {
+            .game-container {
+                padding: 12px 16px 24px;
+            }
+            .current-word {
+                font-size: 1.8rem;
+            }
+            button {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="header">
+        <div class="score-box">🎨 积分 <span id="scoreValue">0</span></div>
+        <div class="difficulty-badge" id="difficultyLabel">🌱 简单</div>
+    </div>
+
+    <div class="word-panel">
+        <div class="current-word" id="targetWord">🐱 加载中...</div>
+    </div>
+
+    <div class="canvas-area">
+        <canvas id="drawCanvas" width="500" height="400" style="width:100%; height:auto; max-width:500px; aspect-ratio:500/400"></canvas>
+    </div>
+
+    <div class="toolbar">
+        <button id="clearBtn" class="btn-clear">🧽 清空画板</button>
+        <button id="guessBtn" class="btn-guess">✨ AI猜词 ✨</button>
+    </div>
+
+    <div class="message-area" id="messageBox">
+        💡 画出题目中的词 → 点击【AI猜词】
+    </div>
+
+    <div class="ad-simulation" id="adBlock">
+        📺 广告位：观看视频可额外获得双倍积分 (模拟)
+        <button id="simulateAdBtn" style="background:#7f8c8d; padding:4px 12px; margin-left:8px; font-size:0.7rem;">🎬 观看广告(演示)</button>
+    </div>
+    <div class="footer">
+        🧠 AI模型: 智谱AI · GLM-4V-Flash (视觉) + GLM-4-Flash (出题) | 无限词库
+    </div>
+</div>
+
+<script>
+    // ======================== ⚙️ 请在这里粘贴你的智谱AI API Key ========================
+    const ZHIPU_API_KEY = "4d7cde9fcd36487589216f7ec09cc44e.Pde3233XdEau19NW";   // <--- 替换成你自己的 API Key
+    // ============================================================================
+
+    // ---------- 游戏状态 ----------
+    let currentWord = "";          // 当前需要画的词
+    let currentDifficulty = "easy"; // easy, medium, hard
+    let currentScore = 0;
+    let consecutiveCorrect = 0;     // 连续猜对次数（用于动态调整难度）
+    
+    // 画板相关
+    let drawingCanvas = null;
+    let ctx = null;
+    let painting = false;
+    
+    // 广告双倍标记
+    let doubleNext = false;
+
+    // ---------- 辅助函数 ----------
+    function showMessage(msg, colorHint = "#FFECAA") {
+        const msgDiv = document.getElementById('messageBox');
+        msgDiv.innerHTML = `✨ ${msg} ✨`;
+        msgDiv.style.color = colorHint;
+        setTimeout(() => {
+            if (document.getElementById('messageBox').innerHTML === `✨ ${msg} ✨`) {
+                document.getElementById('messageBox').innerHTML = `💡 画出题目中的词 → 点击【AI猜词】`;
+                msgDiv.style.color = "#FFECAA";
+            }
+        }, 2500);
+    }
+
+    function updateDifficultyUI() {
+        const label = document.getElementById('difficultyLabel');
+        if (currentDifficulty === 'easy') label.innerHTML = '🌱 简单';
+        else if (currentDifficulty === 'medium') label.innerHTML = '⚡ 中等';
+        else label.innerHTML = '🔥 困难';
+    }
+
+    function addPoints(points) {
+        if (doubleNext) {
+            points = points * 2;
+            showMessage(`🎁 广告奖励！积分双倍获得 +${points}`, "#FFD966");
+            doubleNext = false;
+        }
+        currentScore += points;
+        document.getElementById('scoreValue').innerText = currentScore;
+    }
+
+    // 根据连续正确次数更新难度
+    function updateDifficultyByStreak() {
+        if (consecutiveCorrect >= 8) currentDifficulty = "hard";
+        else if (consecutiveCorrect >= 3) currentDifficulty = "medium";
+        else currentDifficulty = "easy";
+        updateDifficultyUI();
+    }
+
+    // ---------- 调用智谱AI文本模型生成新词（无限词库）----------
+    async function generateNewWord() {
+        // 根据当前难度构建不同的提示词
+        let difficultyHint = "";
+        if (currentDifficulty === "easy") {
+            difficultyHint = "非常简单、日常、具体的事物，如：猫、太阳、雨伞、汽车、苹果。";
+        } else if (currentDifficulty === "medium") {
+            difficultyHint = "稍微抽象或复杂一点的物体或场景，如：火山、圣诞树、宇航员、照相机。";
+        } else {
+            difficultyHint = "比较有挑战性、需要创意表达的名词，可以是角色、著名物品或概念，如：蒙娜丽莎、自由女神像、龙卷风、机器人。";
+        }
+        
+        const prompt = `你是一个猜词游戏出题员。请生成一个${difficultyHint}
+要求：
+- 只输出一个中文名词，不要有任何额外解释、标点或英文。
+- 不要输出“未知”或“随便”之类的词。
+- 尽量避免与前几次相同的词（依靠随机性）。
+示例输出：猫
+现在请输出：`;
+        
+        const url = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+        const headers = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ZHIPU_API_KEY}`
+        };
+        const body = {
+            model: "glm-4-flash",   // 纯文本模型，速度快
+            messages: [
+                { role: "user", content: prompt }
+            ],
+            temperature: 0.9,        // 较高温度增加多样性
+            max_tokens: 20
+        };
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`文本生成失败 ${response.status}: ${err}`);
+            }
+            const data = await response.json();
+            let newWord = data.choices[0].message.content.trim();
+            // 清洗：去掉可能的标点、换行、多余空格
+            newWord = newWord.replace(/[，,。？！；：""''《》【】（）]/g, '');
+            if (newWord.length === 0 || newWord.length > 20) {
+                // 降级备用词
+                newWord = "太阳";
+            }
+            return newWord;
+        } catch (error) {
+            console.error("生成新词失败:", error);
+            showMessage("⚠️ 生成新词失败，使用备用词", "#ffaaaa");
+            // 备用词库（仅应急）
+            const fallback = ["猫", "狗", "房子", "树", "汽车", "笑脸"];
+            return fallback[Math.floor(Math.random() * fallback.length)];
+        }
+    }
+
+    // 刷新当前题目（调用生成新词，并更新界面）
+    async function refreshWord() {
+        showMessage("📝 AI正在为你出题...", "#FFD966");
+        const newWord = await generateNewWord();
+        currentWord = newWord;
+        document.getElementById('targetWord').innerText = `🎯 ${currentWord}`;
+        clearCanvas();   // 清空画板，准备新的一轮
+        showMessage(`✨ 新题目: ${currentWord} ✨ 快画出来吧`, "#b0ffb0");
+    }
+
+    // 猜对后的处理：加分、增加连胜、调整难度、生成下一词
+    async function onCorrect(aiGuess, basePoints) {
+        addPoints(basePoints);
+        consecutiveCorrect++;
+        updateDifficultyByStreak();
+        showMessage(`🎉 正确！ AI猜出了“${aiGuess}” 🎉 +${basePoints}分`, "#b0ffb0");
+        // 生成下一词（异步，但不用等待用户操作，直接替换）
+        await refreshWord();
+    }
+
+    // 猜错处理：重置连胜，难度重置为简单（可选），不清空画板
+    function onWrong(aiGuess) {
+        consecutiveCorrect = 0;
+        currentDifficulty = "easy";
+        updateDifficultyUI();
+        showMessage(`❌ AI觉得你画的是“${aiGuess}”，但题目是“${currentWord}”。再试试看！`, "#ffbe9e");
+        // 不减分，连胜中断
+    }
+
+    // ---------- 调用智谱AI视觉模型识别画作 ----------
+    function getCanvasBase64() {
+        const dataURL = drawingCanvas.toDataURL('image/png');
+        return dataURL.split(',')[1];
+    }
+
+    async function callZhipuVision(base64Image) {
+        const url = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+        const headers = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ZHIPU_API_KEY}`
+        };
+        const promptText = `你是一个专业的图像识别AI。请仔细观察这张手绘图，判断画中描绘的核心物体或场景是什么？只需要输出一个最匹配的中文名词，不要输出多余解释。例如：猫、太阳、汽车、大象、比萨等。如果实在看不出来，输出"未知"。`;
+        const body = {
+            model: "glm-4v-flash",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        { type: "image_url", image_url: { url: `data:image/png;base64,${base64Image}` } },
+                        { type: "text", text: promptText }
+                    ]
+                }
+            ],
+            temperature: 0.2,
+            max_tokens: 20
+        };
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) throw new Error(`视觉API错误 ${response.status}`);
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error(error);
+            showMessage("AI识别失败，请检查网络或API Key", "#ffaaaa");
+            return null;
+        }
+    }
+
+    function isMatch(aiGuess, targetWord) {
+        if (!aiGuess) return false;
+        const normGuess = aiGuess.toLowerCase().replace(/[，,。？!！、]/g, '');
+        const normTarget = targetWord.toLowerCase();
+        if (normGuess === normTarget) return true;
+        if (normGuess.includes(normTarget) || normTarget.includes(normGuess)) return true;
+        // 简单同义词
+        const synonyms = {
+            "猫": ["猫咪", "小猫"],
+            "太阳": ["日", "太阳公公"],
+            "雨伞": ["伞"],
+            "汽车": ["轿车", "车"],
+            "大象": ["象"],
+            "飞机": ["客机"],
+            "圣诞树": ["圣诞树", "松树"],
+            "比萨": ["披萨"],
+            "恐龙": ["恐龙"],
+            "宇航员": ["太空人"]
+        };
+        if (synonyms[normTarget] && synonyms[normTarget].some(syn => normGuess.includes(syn))) return true;
+        return false;
+    }
+
+    async function handleGuess() {
+        if (!ZHIPU_API_KEY || ZHIPU_API_KEY === "YOUR_API_KEY_HERE") {
+            showMessage("⚠️ 请先在代码中填写智谱AI的API Key！", "#ffaaaa");
+            return;
+        }
+        if (!currentWord) {
+            showMessage("⏳ 题目还没准备好，请稍等", "#ffaaaa");
+            return;
+        }
+        showMessage("🤖 AI正在观察你的画作... 稍等片刻", "#FFD966");
+        const base64Img = getCanvasBase64();
+        const aiGuess = await callZhipuVision(base64Img);
+        if (!aiGuess) return;
+        
+        const matched = isMatch(aiGuess, currentWord);
+        let basePoints = 0;
+        if (currentDifficulty === "easy") basePoints = 10;
+        else if (currentDifficulty === "medium") basePoints = 20;
+        else basePoints = 35;
+        
+        if (matched) {
+            await onCorrect(aiGuess, basePoints);
+        } else {
+            onWrong(aiGuess);
+        }
+    }
+
+    // ---------- 画板逻辑 ----------
+    function initCanvas() {
+        drawingCanvas = document.getElementById('drawCanvas');
+        ctx = drawingCanvas.getContext('2d');
+        drawingCanvas.width = 500;
+        drawingCanvas.height = 400;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        ctx.fillStyle = "#000000";
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 6;
+        
+        drawingCanvas.addEventListener('mousedown', startDraw);
+        drawingCanvas.addEventListener('mousemove', draw);
+        drawingCanvas.addEventListener('mouseup', stopDraw);
+        drawingCanvas.addEventListener('touchstart', handleTouchStart);
+        drawingCanvas.addEventListener('touchmove', handleTouchMove);
+        drawingCanvas.addEventListener('touchend', stopDraw);
+    }
+    
+    function startDraw(e) {
+        painting = true;
+        ctx.beginPath();
+        const pos = getCanvasCoordinates(e);
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+    }
+    function draw(e) {
+        if (!painting) return;
+        e.preventDefault();
+        const pos = getCanvasCoordinates(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+    }
+    function stopDraw() { painting = false; ctx.beginPath(); }
+    function getCanvasCoordinates(e) {
+        const rect = drawingCanvas.getBoundingClientRect();
+        const scaleX = drawingCanvas.width / rect.width;
+        const scaleY = drawingCanvas.height / rect.height;
+        let clientX, clientY;
+        if (e.touches) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        let offsetX = clientX - rect.left;
+        let offsetY = clientY - rect.top;
+        offsetX = Math.min(Math.max(offsetX, 0), rect.width);
+        offsetY = Math.min(Math.max(offsetY, 0), rect.height);
+        return { x: offsetX * scaleX, y: offsetY * scaleY };
+    }
+    function handleTouchStart(e) { e.preventDefault(); startDraw(e); }
+    function handleTouchMove(e) { e.preventDefault(); draw(e); }
+    function clearCanvas() {
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        ctx.fillStyle = "#000000";
+        showMessage("🧽 画板已清空", "#FFE6B0");
+    }
+    
+    // 模拟广告
+    function simulateAdReward() {
+        if (doubleNext) {
+            showMessage("已有双倍机会等待使用", "#ffdd99");
+            return;
+        }
+        doubleNext = true;
+        showMessage("🎬 观看广告（模拟）获得一次双倍积分机会！下次猜对额外获得同等积分", "#ffdd99");
+        setTimeout(() => {
+            if (doubleNext) {
+                doubleNext = false;
+                showMessage("⏰ 双倍积分机会已过期，请重新看广告", "#ffaa88");
+            }
+        }, 60000);
+    }
+    
+    // ---------- 启动游戏 ----------
+    async function startGame() {
+        initCanvas();
+        // 初始化第一个词
+        currentWord = "猫";   // 临时占位
+        document.getElementById('targetWord').innerText = "🎯 加载中...";
+        currentScore = 0;
+        consecutiveCorrect = 0;
+        currentDifficulty = "easy";
+        updateDifficultyUI();
+        document.getElementById('scoreValue').innerText = "0";
+        // 生成真正的第一个词
+        const firstWord = await generateNewWord();
+        currentWord = firstWord;
+        document.getElementById('targetWord').innerText = `🎯 ${currentWord}`;
+        showMessage("🎨 无限词库模式！AI每轮都会出全新题目", "#FFF0B5");
+    }
+    
+    // 绑定事件
+    document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+    document.getElementById('guessBtn').addEventListener('click', handleGuess);
+    document.getElementById('simulateAdBtn').addEventListener('click', simulateAdReward);
+    
+    startGame();
+</script>
+</body>
+</html>
